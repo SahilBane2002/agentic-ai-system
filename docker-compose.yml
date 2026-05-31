@@ -1,6 +1,36 @@
 version: "3.9"
 services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: agentic
+      POSTGRES_USER: agentic
+      POSTGRES_PASSWORD: agentic
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agentic"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   api:
     build: .
     env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://agentic:agentic@db:5432/agentic
     ports: ["8000:8000"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 20s
+      retries: 3
+
+volumes:
+  pgdata:
